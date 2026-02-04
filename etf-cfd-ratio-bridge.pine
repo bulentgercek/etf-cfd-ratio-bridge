@@ -127,13 +127,15 @@ p_nas100       = f_price(symNAS100)
 [p_ibit, t_ibit] = f_getData(symIBIT)
 p_btc            = f_price(symBTC)
 
-// Check if ETF Market is Closed (Last ETF bar time < Current Chart Time)
-bool c_spy  = not na(t_spy) ? (t_spy < time) : true
-bool c_gld  = not na(t_gld) ? (t_gld < time) : true
-bool c_slv  = not na(t_slv) ? (t_slv < time) : true
-bool c_iwm  = not na(t_iwm) ? (t_iwm < time) : true
-bool c_qqq  = not na(t_qqq) ? (t_qqq < time) : true
-bool c_ibit = not na(t_ibit) ? (t_ibit < time) : true
+// Check if ETF Market is Closed (Last ETF bar time older than tolerance threshold)
+// Tolerance: 1 bar duration (prevents flickering "Closed" on live bars due to slight lag)
+int tol = timeframe.in_seconds(timeframe.period) * 1000
+bool c_spy  = not na(t_spy) ? (time - t_spy > tol) : true
+bool c_gld  = not na(t_gld) ? (time - t_gld > tol) : true
+bool c_slv  = not na(t_slv) ? (time - t_slv > tol) : true
+bool c_iwm  = not na(t_iwm) ? (time - t_iwm > tol) : true
+bool c_qqq  = not na(t_qqq) ? (time - t_qqq > tol) : true
+bool c_ibit = not na(t_ibit) ? (time - t_ibit > tol) : true
 
 // Ratios: Use Default Fixed Ratio if ETF is closed, else calculate live.
 // Ratios: Use Default Fixed Ratio if ETF is closed, else calculate live.
