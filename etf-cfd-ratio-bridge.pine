@@ -1,0 +1,442 @@
+//@version=6
+// This source code is subject to the terms of the Mozilla Public License 2.0 at https://mozilla.org/MPL/2.0/
+// Project by BulentGercek
+
+indicator("ETF-CFD Ratio Bridge", shorttitle="ETF-CFD RB", overlay=true, max_labels_count=500, max_lines_count=500)
+
+// -----------------------------------------------------------------------------
+// GROUP: Symbols
+// -----------------------------------------------------------------------------
+grp_sym = "Symbols"
+
+// Pair 1: SPY / US500
+symSPY   = input.symbol("AMEX:SPY",             "SPY (ETF)",     group=grp_sym)
+defRatioSPY = input.float(0.099, "Fixed Ratio (Closed)", step=0.001, group=grp_sym)
+symUS500 = input.symbol("PEPPERSTONE:US500",    "US500 (CFD)",   group=grp_sym)
+
+// Pair 2: GLD / XAUUSD
+symGLD   = input.symbol("AMEX:GLD",             "GLD (ETF)",     group=grp_sym)
+defRatioGLD = input.float(0.094, "Fixed Ratio (Closed)", step=0.001, group=grp_sym)
+symXAU   = input.symbol("PEPPERSTONE:XAUUSD",   "XAUUSD (CFD)",  group=grp_sym)
+
+// Pair 3: SLV / XAGUSD
+symSLV   = input.symbol("AMEX:SLV",             "SLV (ETF)",     group=grp_sym)
+defRatioSLV = input.float(0.92, "Fixed Ratio (Closed)", step=0.01, group=grp_sym)
+symXAG   = input.symbol("PEPPERSTONE:XAGUSD",   "XAGUSD (CFD)",  group=grp_sym)
+
+// Pair 4: IWM / US2000
+symIWM    = input.symbol("AMEX:IWM",             "IWM (ETF)",     group=grp_sym)
+defRatioIWM = input.float(0.108, "Fixed Ratio (Closed)", step=0.001, group=grp_sym)
+symUS2000 = input.symbol("PEPPERSTONE:US2000",   "US2000 (CFD)",  group=grp_sym)
+
+// Pair 5: QQQ / NAS100
+symQQQ    = input.symbol("NASDAQ:QQQ",           "QQQ (ETF)",     group=grp_sym)
+defRatioQQQ = input.float(0.024, "Fixed Ratio (Closed)", step=0.001, group=grp_sym)
+symNAS100 = input.symbol("PEPPERSTONE:NAS100",   "NAS100 (CFD)",  group=grp_sym)
+
+// Pair 6: IBIT / BTCUSD
+symIBIT   = input.symbol("NASDAQ:IBIT",          "IBIT (ETF)",    group=grp_sym)
+defRatioIBIT = input.float(0.00057, "Fixed Ratio (Closed)", step=0.00001, group=grp_sym)
+symBTC    = input.symbol("PEPPERSTONE:BTCUSD",   "BTCUSD (CFD)",  group=grp_sym)
+
+
+// -----------------------------------------------------------------------------
+// GROUP: Visuals - Table
+// -----------------------------------------------------------------------------
+grp_tbl = "Table Settings"
+showTable = input.bool(true, "Show Ratio Table", group=grp_tbl)
+tblPos    = input.string("Top Right", "Position", options=["Top Right","Top Left","Bottom Right","Bottom Left"], group=grp_tbl)
+tblBgCol  = input.color(color.new(color.black, 50), "Background Color", group=grp_tbl)
+tblTxtCol = input.color(color.white, "Text Color", group=grp_tbl)
+tblTxtSize= input.string(size.small, "Text Size", options=[size.tiny, size.small, size.normal, size.large], group=grp_tbl)
+
+// -----------------------------------------------------------------------------
+// GROUP: Visuals - Companion Label
+// -----------------------------------------------------------------------------
+grp_lbl = "Companion Label Settings"
+showLbl   = input.bool(true, "Show Companion Price Label", inline="lbl1", group=grp_lbl)
+lblSide   = input.string("Right", "Side", options=["Right","Left"], inline="lbl1", group=grp_lbl)
+lblOffset = input.int(3, "Offset", minval=0, group=grp_lbl)
+lblBgCol  = input.color(color.new(color.blue, 60), "Background Color", group=grp_lbl)
+lblTxtCol = input.color(color.white, "Text Color", group=grp_lbl)
+
+// -----------------------------------------------------------------------------
+// GROUP: Visuals - Left Scale (Virtual Axis)
+// -----------------------------------------------------------------------------
+grp_scale = "Left Virtual Scale"
+showScale = input.bool(true, "Show Left Virtual Scale", group=grp_scale)
+// UPDATED: Now counts from RIGHT (Current bar) backwards
+scaleOffset = input.int(100, "Right Offset (Bars from Current)", minval=0, group=grp_scale, tooltip="Distance from the current live bar backwards")
+
+// -----------------------------------------------------------------------------
+// GROUP: Historical Levels (HH/LL)
+// -----------------------------------------------------------------------------
+grp_hist = "Historical Levels (HH/LL)"
+showHist = input.bool(true, "Show Historical Levels", group=grp_hist)
+histLen  = input.int(20, "Lookback Length", minval=1, group=grp_hist)
+
+// -----------------------------------------------------------------------------
+// FUNCTIONS & HELPERS
+// -----------------------------------------------------------------------------
+
+f_price(_sym) =>
+    request.security(_sym, timeframe.period, close, barmerge.gaps_off, barmerge.lookahead_off)
+
+f_getData(_sym) =>
+    request.security(_sym, timeframe.period, [close, time], barmerge.gaps_off, barmerge.lookahead_off)
+
+f_getPos(_str) =>
+    switch _str
+        "Top Right"    => position.top_right
+        "Top Left"     => position.top_left
+        "Bottom Right" => position.bottom_right
+        "Bottom Left"  => position.bottom_left
+        => position.top_right
+
+f_fmtNum(num) => str.tostring(num, format.mintick)
+f_fmtRatio(num) => str.tostring(num, "#.######")
+f_cleanTicker(_fullSym) =>
+    parts = str.split(_fullSym, ":")
+    array.size(parts) > 1 ? array.get(parts, 1) : _fullSym
+
+f_isCurrentChart(_targetSym) =>
+    syminfo.ticker == f_cleanTicker(_targetSym)
+
+// -----------------------------------------------------------------------------
+// DATA FETCHING & CALCULATIONS
+// -----------------------------------------------------------------------------
+
+// Fetch ETF Data (Price + Time) and CFD Price
+[p_spy, t_spy] = f_getData(symSPY)
+p_us500        = f_price(symUS500)
+
+[p_gld, t_gld] = f_getData(symGLD)
+p_xau          = f_price(symXAU)
+
+[p_slv, t_slv] = f_getData(symSLV)
+p_xag          = f_price(symXAG)
+
+[p_iwm, t_iwm] = f_getData(symIWM)
+p_us2000       = f_price(symUS2000)
+
+[p_qqq, t_qqq] = f_getData(symQQQ)
+p_nas100       = f_price(symNAS100)
+
+[p_ibit, t_ibit] = f_getData(symIBIT)
+p_btc            = f_price(symBTC)
+
+// Check if ETF Market is Closed (Last ETF bar time < Current Chart Time)
+bool c_spy  = not na(t_spy) ? (t_spy < time) : true
+bool c_gld  = not na(t_gld) ? (t_gld < time) : true
+bool c_slv  = not na(t_slv) ? (t_slv < time) : true
+bool c_iwm  = not na(t_iwm) ? (t_iwm < time) : true
+bool c_qqq  = not na(t_qqq) ? (t_qqq < time) : true
+bool c_ibit = not na(t_ibit) ? (t_ibit < time) : true
+
+// Ratios: Use Default Fixed Ratio if ETF is closed, else calculate live.
+// Ratios: Use Default Fixed Ratio if ETF is closed, else calculate live.
+r_spy_us500  = c_spy  ? defRatioSPY  : ((nz(p_us500)  != 0) ? (p_spy  / p_us500)  : na)
+r_gld_xau    = c_gld  ? defRatioGLD  : ((nz(p_xau)    != 0) ? (p_gld  / p_xau)    : na)
+r_slv_xag    = c_slv  ? defRatioSLV  : ((nz(p_xag)    != 0) ? (p_slv  / p_xag)    : na)
+r_iwm_us2000 = c_iwm  ? defRatioIWM  : ((nz(p_us2000) != 0) ? (p_iwm  / p_us2000) : na)
+r_qqq_nas100 = c_qqq  ? defRatioQQQ  : ((nz(p_nas100) != 0) ? (p_qqq  / p_nas100) : na)
+r_ibit_btc   = c_ibit ? defRatioIBIT : ((nz(p_btc)    != 0) ? (p_ibit / p_btc)    : na)
+
+// Synthetic/Display Prices (If Closed, use Synthetic based on Ratio; Else use Live)
+// Formula: ETF / CFD = Ratio  =>  ETF = Ratio * CFD
+d_spy  = c_spy  ? (p_us500  * r_spy_us500)  : p_spy
+d_gld  = c_gld  ? (p_xau    * r_gld_xau)    : p_gld
+d_slv  = c_slv  ? (p_xag    * r_slv_xag)    : p_slv
+d_iwm  = c_iwm  ? (p_us2000 * r_iwm_us2000) : p_iwm
+d_qqq  = c_qqq  ? (p_nas100 * r_qqq_nas100) : p_qqq
+d_ibit = c_ibit ? (p_btc    * r_ibit_btc)   : p_ibit
+
+// -----------------------------------------------------------------------------
+// ACTIVE PAIR LOGIC
+// -----------------------------------------------------------------------------
+
+float activeRatio = na
+string activeCompName = ""
+bool invertRatio = false 
+int activePairIndex = 0
+
+if f_isCurrentChart(symSPY)
+    activeRatio := r_spy_us500
+    activeCompName := "US500"
+    invertRatio := true
+    activePairIndex := 1
+else if f_isCurrentChart(symUS500)
+    activeRatio := r_spy_us500
+    activeCompName := "SPY"
+    invertRatio := false
+    activePairIndex := 1
+
+else if f_isCurrentChart(symGLD)
+    activeRatio := r_gld_xau
+    activeCompName := "XAUUSD"
+    invertRatio := true
+    activePairIndex := 2
+else if f_isCurrentChart(symXAU)
+    activeRatio := r_gld_xau
+    activeCompName := "GLD"
+    invertRatio := false
+    activePairIndex := 2
+
+else if f_isCurrentChart(symSLV)
+    activeRatio := r_slv_xag
+    activeCompName := "XAGUSD"
+    invertRatio := true
+    activePairIndex := 3
+else if f_isCurrentChart(symXAG)
+    activeRatio := r_slv_xag
+    activeCompName := "SLV"
+    invertRatio := false
+    activePairIndex := 3
+
+else if f_isCurrentChart(symIWM)
+    activeRatio := r_iwm_us2000
+    activeCompName := "US2000"
+    invertRatio := true
+    activePairIndex := 4
+else if f_isCurrentChart(symUS2000)
+    activeRatio := r_iwm_us2000
+    activeCompName := "IWM"
+    invertRatio := false
+    activePairIndex := 4
+
+else if f_isCurrentChart(symQQQ)
+    activeRatio := r_qqq_nas100
+    activeCompName := "NAS100"
+    invertRatio := true
+    activePairIndex := 5
+else if f_isCurrentChart(symNAS100)
+    activeRatio := r_qqq_nas100
+    activeCompName := "QQQ"
+    invertRatio := false
+    activePairIndex := 5
+
+else if f_isCurrentChart(symIBIT)
+    activeRatio := r_ibit_btc
+    activeCompName := "BTCUSD"
+    invertRatio := true
+    activePairIndex := 6
+else if f_isCurrentChart(symBTC)
+    activeRatio := r_ibit_btc
+    activeCompName := "IBIT"
+    invertRatio := false
+    activePairIndex := 6
+
+
+// -----------------------------------------------------------------------------
+// TABLE LOGIC
+// -----------------------------------------------------------------------------
+// Rows: Header + 6 Pairs = 7 Rows
+// Columns: Name, Ratio, Last Prices
+var table infoTable = table.new(f_getPos(tblPos), 3, 7, border_width=1, border_color=color.gray, frame_color=color.gray, frame_width=1)
+
+if showTable and barstate.islast
+    table.clear(infoTable, 0, 0, 2, 6)
+    // Header
+    table.cell(infoTable, 0, 0, "Pair",      bgcolor=tblBgCol, text_color=tblTxtCol, text_size=tblTxtSize)
+    table.cell(infoTable, 1, 0, "Ratio",     bgcolor=tblBgCol, text_color=tblTxtCol, text_size=tblTxtSize)
+    table.cell(infoTable, 2, 0, "Prices",    bgcolor=tblBgCol, text_color=tblTxtCol, text_size=tblTxtSize)
+
+    int r = 1
+
+    // Row 1
+    if activePairIndex == 0 or activePairIndex == 1
+        table.cell(infoTable, 0, r, "SPY/US500", bgcolor=tblBgCol, text_color=tblTxtCol, text_size=tblTxtSize)
+        table.cell(infoTable, 1, r, f_fmtRatio(r_spy_us500), bgcolor=tblBgCol, text_color=tblTxtCol, text_size=tblTxtSize)
+        table.cell(infoTable, 2, r, f_fmtNum(d_spy) + " / " + f_fmtNum(p_us500), bgcolor=tblBgCol, text_color=tblTxtCol, text_size=tblTxtSize)
+        r := r + 1
+
+    // Row 2
+    if activePairIndex == 0 or activePairIndex == 2
+        table.cell(infoTable, 0, r, "GLD/XAUUSD", bgcolor=tblBgCol, text_color=tblTxtCol, text_size=tblTxtSize)
+        table.cell(infoTable, 1, r, f_fmtRatio(r_gld_xau), bgcolor=tblBgCol, text_color=tblTxtCol, text_size=tblTxtSize)
+        table.cell(infoTable, 2, r, f_fmtNum(d_gld) + " / " + f_fmtNum(p_xau), bgcolor=tblBgCol, text_color=tblTxtCol, text_size=tblTxtSize)
+        r := r + 1
+
+    // Row 3
+    if activePairIndex == 0 or activePairIndex == 3
+        table.cell(infoTable, 0, r, "SLV/XAGUSD", bgcolor=tblBgCol, text_color=tblTxtCol, text_size=tblTxtSize)
+        table.cell(infoTable, 1, r, f_fmtRatio(r_slv_xag), bgcolor=tblBgCol, text_color=tblTxtCol, text_size=tblTxtSize)
+        table.cell(infoTable, 2, r, f_fmtNum(d_slv) + " / " + f_fmtNum(p_xag), bgcolor=tblBgCol, text_color=tblTxtCol, text_size=tblTxtSize)
+        r := r + 1
+
+    // Row 4
+    if activePairIndex == 0 or activePairIndex == 4
+        table.cell(infoTable, 0, r, "IWM/US2000", bgcolor=tblBgCol, text_color=tblTxtCol, text_size=tblTxtSize)
+        table.cell(infoTable, 1, r, f_fmtRatio(r_iwm_us2000), bgcolor=tblBgCol, text_color=tblTxtCol, text_size=tblTxtSize)
+        table.cell(infoTable, 2, r, f_fmtNum(d_iwm) + " / " + f_fmtNum(p_us2000), bgcolor=tblBgCol, text_color=tblTxtCol, text_size=tblTxtSize)
+        r := r + 1
+
+    // Row 5
+    if activePairIndex == 0 or activePairIndex == 5
+        table.cell(infoTable, 0, r, "QQQ/NAS100", bgcolor=tblBgCol, text_color=tblTxtCol, text_size=tblTxtSize)
+        table.cell(infoTable, 1, r, f_fmtRatio(r_qqq_nas100), bgcolor=tblBgCol, text_color=tblTxtCol, text_size=tblTxtSize)
+        table.cell(infoTable, 2, r, f_fmtNum(d_qqq) + " / " + f_fmtNum(p_nas100), bgcolor=tblBgCol, text_color=tblTxtCol, text_size=tblTxtSize)
+        r := r + 1
+
+    // Row 6
+    if activePairIndex == 0 or activePairIndex == 6
+        table.cell(infoTable, 0, r, "IBIT/BTCUSD", bgcolor=tblBgCol, text_color=tblTxtCol, text_size=tblTxtSize)
+        table.cell(infoTable, 1, r, f_fmtRatio(r_ibit_btc), bgcolor=tblBgCol, text_color=tblTxtCol, text_size=tblTxtSize)
+        table.cell(infoTable, 2, r, f_fmtNum(d_ibit) + " / " + f_fmtNum(p_btc), bgcolor=tblBgCol, text_color=tblTxtCol, text_size=tblTxtSize)
+        r := r + 1
+
+
+
+
+// -----------------------------------------------------------------------------
+// COMPANION LABEL LOGIC
+// -----------------------------------------------------------------------------
+
+float compPrice = na
+if not na(activeRatio)
+    compPrice := invertRatio ? (close / activeRatio) : (close * activeRatio)
+
+var label compLabel = na
+
+if barstate.islast and showLbl and not na(compPrice)
+    label.delete(compLabel)
+    int x_loc = bar_index + lblOffset
+    compLabel := label.new(
+         x          = x_loc, 
+         y          = close, 
+         text       = activeCompName + ": " + f_fmtNum(compPrice), 
+         color      = lblBgCol, 
+         textcolor  = lblTxtCol, 
+         style      = lblSide == "Right" ? label.style_label_left : label.style_label_right,
+         size       = size.normal
+         )
+
+
+// -----------------------------------------------------------------------------
+// FEATURE: HOVER VALUES (Display All)
+// -----------------------------------------------------------------------------
+
+float h_open  = na
+float h_high  = na
+float h_low   = na
+float h_close = na
+
+if not na(activeRatio)
+    if invertRatio
+        h_open  := open / activeRatio
+        h_high  := high / activeRatio
+        h_low   := low / activeRatio
+        h_close := close / activeRatio
+    else
+        h_open  := open * activeRatio
+        h_high  := high * activeRatio
+        h_low   := low * activeRatio
+        h_close := close * activeRatio
+
+// FIX 1: Static Title for plot to avoid "series string" error
+// FIX 2: Moved display option to be simple
+plot(h_close, "Companion Close", color=color.gray, display=display.all)
+
+
+// -----------------------------------------------------------------------------
+// FEATURE: LEFT VIRTUAL SCALE (Fixed)
+// -----------------------------------------------------------------------------
+
+var label[] scaleLabels = array.new_label()
+
+// FIX 3: Calculate ATR globally to avoid "warning: function should be called on each calculation"
+float globalStep = ta.atr(14)
+
+if showScale and barstate.islast and not na(activeRatio)
+    for l in scaleLabels
+        label.delete(l)
+    array.clear(scaleLabels)
+    
+    // Calculate X based on time offset
+    int timeStep = 0
+    if bar_index > 0
+        timeStep := int(time - time[1])
+    else 
+        timeStep := 60000 
+    
+    // PREVIOUS: from Left Edge
+    // int visibleLeftTime = chart.left_visible_bar_time
+    // if visibleLeftTime == 0
+    //     visibleLeftTime := time[math.min(bar_index, 50)]
+    // int xTime = visibleLeftTime + (scaleOffset * timeStep)
+    
+    // NEW: From Right (Last Bar)
+    // We want X bars BACK from the current time.
+    int xTime = time - (scaleOffset * timeStep)
+    
+    // Determine Step Size
+    float step = globalStep
+    if na(step) or step == 0
+        step := close * 0.01 
+    
+    float tickSize = step * 2.0 
+    int numLevels = 8
+    
+    for i = -numLevels to numLevels
+        float levelPrice = close + (i * tickSize)
+        float convertedPrice = invertRatio ? (levelPrice / activeRatio) : (levelPrice * activeRatio)
+        string txt = f_fmtNum(convertedPrice) 
+        
+        lbl = label.new(
+             x = xTime,
+             y = levelPrice,
+             text = txt,
+             xloc = xloc.bar_time,
+             color = color.new(color.gray, 90),
+             style = label.style_label_right,
+             textcolor = color.gray,
+             size = size.small
+             )
+        array.push(scaleLabels, lbl)
+
+
+// -----------------------------------------------------------------------------
+// FEATURE: HISTORICAL LEVELS (HH/LL)
+// -----------------------------------------------------------------------------
+
+// Globals for High/Low to ensure series consistency
+float hh = ta.highest(high, histLen)
+float ll = ta.lowest(low, histLen)
+
+var line histHHLine = na
+var line histLLLine = na
+var label histHHLabel = na
+var label histLLLabel = na
+
+if showHist and barstate.islast and not na(activeRatio)
+    // Clean old
+    line.delete(histHHLine)
+    line.delete(histLLLine)
+    label.delete(histHHLabel)
+    label.delete(histLLLabel)
+    
+    // START point: current bar - lookback
+    int startIdx = bar_index - histLen
+    if startIdx < 0
+        startIdx := 0
+    
+    // END point: current bar + offset (for visibility)
+    int endIdx = bar_index + 10 // extend a bit to the right
+    
+    // Converted Values
+    float hhVal = hh
+    float llVal = ll
+    float convHH = invertRatio ? (hhVal / activeRatio) : (hhVal * activeRatio)
+    float convLL = invertRatio ? (llVal / activeRatio) : (llVal * activeRatio)
+
+    // Lines
+    histHHLine := line.new(startIdx, hhVal, endIdx, hhVal, color=color.new(color.gray, 50), style=line.style_dashed)
+    histLLLine := line.new(startIdx, llVal, endIdx, llVal, color=color.new(color.gray, 50), style=line.style_dashed)
+    
+    // Labels
+    string t_hh = "HH(" + str.tostring(histLen) + "): " + f_fmtNum(convHH)
+    string t_ll = "LL(" + str.tostring(histLen) + "): " + f_fmtNum(convLL)
+    
+    histHHLabel := label.new(endIdx, hhVal, t_hh, style=label.style_label_left, color=color.new(color.gray, 80), textcolor=color.gray, size=size.small)
+    histLLLabel := label.new(endIdx, llVal, t_ll, style=label.style_label_left, color=color.new(color.gray, 80), textcolor=color.gray, size=size.small)
+    
