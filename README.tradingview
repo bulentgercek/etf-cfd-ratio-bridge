@@ -1,0 +1,79 @@
+[img]https://www.tradingview.com/x/5hifE4PX/[/img]
+
+This indicator helps traders visualize the relationship between ETFs and their corresponding CFD/Spot instruments. It allows you to trade on one chart while monitoring the equivalent price levels of the other instrument without mental math or switching screens.
+
+[b]Features[/b]
+
+[b]1. Ratio Table[/b]
+A customizable table displayed on the chart (default: Top Right) that shows:
+- [b]Pair[/b]: The ETF and CFD pair being monitored.
+- [b]Ratio[/b]: The calculated price ratio (ETF / CFD).
+- [b]Prices[/b]: Real-time prices for both instruments.
+
+[b]2. Companion Price Label[/b]
+A dynamic label that moves with the current price candle.
+- Displays the [i]equivalent[/i] price of the paired instrument.
+- [b]Example[/b]: If you are viewing [b]SPY[/b], the label shows the equivalent [b]US500[/b] price next to the candle.
+
+[b]3. Left Virtual Scale[/b]
+A custom vertical axis drawn on the left side of the chart.
+- Shows price levels for the [i]companion[/i] instrument corresponding to the current visible chart range.
+- Allows you to read "CFD prices" directly on an "ETF chart" (and vice versa) via the Y-axis.
+
+[b]4. Historical Levels lines[/b]
+Visualizes recent market structure converted to the companion price.
+- [b]HH(x)[/b]: Highest High of the last X bars (default: 20).
+- [b]LL(x)[/b]: Lowest Low of the last X bars.
+- Dashed lines extend to the right with labels showing the converted price at those key levels.
+
+[b]5. Closed Market Handling[/b]
+Ensures the indicator remains useful even when the ETF market is closed (e.g., after hours) while the Futures/CFD market is open.
+- [b]Automatic Detection[/b]: The script detects if the ETF market is closed based on the timestamp.
+- [b]Fixed Ratio[/b]: Automatically switches to a user-defined "Fixed Ratio" when the ETF is closed.
+- [b]Continuous Updates[/b]: Prevents values from freezing, calculating a synthetic "Shadow Price" for the closed asset so you can continue to see projected levels based on the live CFD market.
+
+[b]Technical Explanation (The Math)[/b]
+
+The indicator functions by calculating a dynamic ratio between the two instruments and using it to convert price levels.
+
+[b]Formulas[/b]
+1.  [b]Calculate Ratio[/b]:
+    Ratio = Price(ETF) / Price(CFD)
+
+2.  [b]Conversion[/b]:
+    - [b]ETF Chart → CFD Price[/b]:
+      Equivalent CFD Price = Current ETF Price / Ratio
+    - [b]CFD Chart → ETF Price[/b]:
+      Equivalent ETF Price = Current CFD Price × Ratio
+
+[b]Example (SPY vs US500)[/b]
+- [b]Scenario[/b]: You are trading on the [b]SPY[/b] chart.
+- [b]Current Prices[/b]:
+    - SPY (ETF) = [b]$500[/b]
+    - US500 (CFD) = [b]$5000[/b]
+- [b]Step 1[/b]: Calculate Ratio
+    - 500 / 5000 = 0.10
+- [b]Step 2[/b]: Calculate Equivalent Price
+    - If SPY moves to [b]$505[/b], what is the US500 equivalent?
+    - 505 / 0.10 = [b]5050[/b]
+    - The indicator will display [b]"US500: 5050"[/b] on the label and scale.
+
+[b]Supported Pairs[/b]
+
+SPY (AMEX) = US500
+GLD (AMEX) = XAUUSD
+SLV (AMEX) = XAGUSD
+IWM (AMEX) = US2000
+QQQ (NASDAQ) = NAS100
+IBIT (NASDAQ) = BTCUSD
+
+[b]Settings[/b]
+
+- [b]Symbols[/b]: Customize the ticker symbols for each pair if your broker uses different names.
+    - [b]Fixed Ratio (Closed)[/b]: Manually adjust the fallback ratio used when the ETF market is closed (default values provided).
+- [b]Visuals[/b]:
+    - Toggle Table, Labels, Scale, and Historical Lines on/off.
+    - Customize colors, text sizes, and positions.
+    - [b]Right Offset (Bars from Current)[/b]: Adjusts how far back (from the current live bar) the Left Virtual Scale is drawn. Increasing this moves the scale further to the left.
+- [b]Historical Levels[/b]:
+    - [b]Lookback Length[/b]: Number of bars to check for High/Low calculations (Default: 20).
