@@ -11,10 +11,12 @@ A customizable table displayed on the chart (default: Top Right) that shows:
 - **Pair**: The ETF and CFD pair being monitored.
 - **Ratio**: The calculated price ratio (ETF / CFD).
 - **Prices**: Real-time prices for both instruments.
+- **Status**: Indicates if the market is **Open** or **Closed**. The "Closed" status is highlighted (default: Orange) to alert you that the Fixed Ratio is in use.
 
 ### 2. Companion Price Label
 A dynamic label that moves with the current price candle.
 - Displays the *equivalent* price of the paired instrument.
+- **Visual Status**: The label changes background color (default: Orange) when the market is closed, indicating that the displayed price is derived from the Fixed Ratio.
 - **Example**: If you are viewing **SPY**, the label shows the equivalent **US500** price next to the candle.
 
 ### 3. Left Virtual Scale
@@ -32,6 +34,9 @@ Visualizes recent market structure converted to the companion price.
 Ensures the indicator remains useful even when the ETF market is closed (e.g., after hours) while the Futures/CFD market is open.
 - **Automatic Detection**: The script detects if the ETF market is closed based on the timestamp.
 - **Fixed Ratio**: Automatically switches to a user-defined "Fixed Ratio" when the ETF is closed.
+- **Visual Cues**:
+    - The Ratio Table displays a "Closed" status highlighted in orange.
+    - The Companion Label turns orange (customizable) to indicate reliance on the fixed ratio.
 - **Continuous Updates**: Prevents values from freezing, calculating a synthetic "Shadow Price" for the closed asset so you can continue to see projected levels based on the live CFD market.
 
 ## Technical Explanation (The Math)
@@ -78,6 +83,7 @@ The indicator functions by calculating a dynamic ratio between the two instrumen
 - **Visuals**:
     - Toggle Table, Labels, Scale, and Historical Lines on/off.
     - Customize colors, text sizes, and positions.
+    - **Closed Status Colors**: Customize the background colors for the Table status cell and Companion Label when the market is closed (default: Orange).
     - **Right Offset (Bars from Current)**: Adjusts how far back (from the current live bar) the Left Virtual Scale is drawn. Increasing this moves the scale further to the left.
 - **Historical Levels**:
     - **Lookback Length**: Number of bars to check for High/Low calculations (Default: 20).

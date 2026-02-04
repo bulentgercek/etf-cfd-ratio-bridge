@@ -9,10 +9,12 @@ A customizable table displayed on the chart (default: Top Right) that shows:
 - [b]Pair[/b]: The ETF and CFD pair being monitored.
 - [b]Ratio[/b]: The calculated price ratio (ETF / CFD).
 - [b]Prices[/b]: Real-time prices for both instruments.
+- [b]Status[/b]: Shows [b]Open[/b] or [b]Closed[/b]. Highlighted in Orange (default) when using Fixed Ratio.
 
 [b]2. Companion Price Label[/b]
 A dynamic label that moves with the current price candle.
 - Displays the [i]equivalent[/i] price of the paired instrument.
+- [b]Visual Change[/b]: Background turns Orange (default) when Market is Closed to indicate Fixed Ratio usage.
 - [b]Example[/b]: If you are viewing [b]SPY[/b], the label shows the equivalent [b]US500[/b] price next to the candle.
 
 [b]3. Left Virtual Scale[/b]
@@ -30,6 +32,7 @@ Visualizes recent market structure converted to the companion price.
 Ensures the indicator remains useful even when the ETF market is closed (e.g., after hours) while the Futures/CFD market is open.
 - [b]Automatic Detection[/b]: The script detects if the ETF market is closed based on the timestamp.
 - [b]Fixed Ratio[/b]: Automatically switches to a user-defined "Fixed Ratio" when the ETF is closed.
+- [b]Visual Cues[/b]: Table and Label change color to indicate "Closed" status so you know the Fixed Ratio is active.
 - [b]Continuous Updates[/b]: Prevents values from freezing, calculating a synthetic "Shadow Price" for the closed asset so you can continue to see projected levels based on the live CFD market.
 
 [b]Technical Explanation (The Math)[/b]
@@ -74,6 +77,7 @@ IBIT (NASDAQ) = BTCUSD
 - [b]Visuals[/b]:
     - Toggle Table, Labels, Scale, and Historical Lines on/off.
     - Customize colors, text sizes, and positions.
+    - [b]Closed Colors[/b]: Set specific colors for the Table status and Companion Label for when the market is closed.
     - [b]Right Offset (Bars from Current)[/b]: Adjusts how far back (from the current live bar) the Left Virtual Scale is drawn. Increasing this moves the scale further to the left.
 - [b]Historical Levels[/b]:
     - [b]Lookback Length[/b]: Number of bars to check for High/Low calculations (Default: 20).

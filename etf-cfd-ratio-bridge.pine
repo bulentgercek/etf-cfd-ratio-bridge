@@ -47,6 +47,7 @@ grp_tbl = "Table Settings"
 showTable = input.bool(true, "Show Ratio Table", group=grp_tbl)
 tblPos    = input.string("Top Right", "Position", options=["Top Right","Top Left","Bottom Right","Bottom Left"], group=grp_tbl)
 tblBgCol  = input.color(color.new(color.black, 50), "Background Color", group=grp_tbl)
+tblBgColClosed = input.color(color.new(color.orange, 50), "Closed Status Bg Color", group=grp_tbl)
 tblTxtCol = input.color(color.white, "Text Color", group=grp_tbl)
 tblTxtSize= input.string(size.small, "Text Size", options=[size.tiny, size.small, size.normal, size.large], group=grp_tbl)
 
@@ -58,6 +59,7 @@ showLbl   = input.bool(true, "Show Companion Price Label", inline="lbl1", group=
 lblSide   = input.string("Right", "Side", options=["Right","Left"], inline="lbl1", group=grp_lbl)
 lblOffset = input.int(3, "Offset", minval=0, group=grp_lbl)
 lblBgCol  = input.color(color.new(color.blue, 60), "Background Color", group=grp_lbl)
+lblBgColClosed = input.color(color.new(color.orange, 60), "Closed Background Color", group=grp_lbl)
 lblTxtCol = input.color(color.white, "Text Color", group=grp_lbl)
 
 // -----------------------------------------------------------------------------
@@ -159,6 +161,7 @@ float activeRatio = na
 string activeCompName = ""
 bool invertRatio = false 
 int activePairIndex = 0
+bool isActiveClosed = false
 
 if f_isCurrentChart(symSPY)
     activeRatio := r_spy_us500
@@ -226,20 +229,34 @@ else if f_isCurrentChart(symBTC)
     invertRatio := false
     activePairIndex := 6
 
+if activePairIndex == 1
+    isActiveClosed := c_spy
+else if activePairIndex == 2
+    isActiveClosed := c_gld
+else if activePairIndex == 3
+    isActiveClosed := c_slv
+else if activePairIndex == 4
+    isActiveClosed := c_iwm
+else if activePairIndex == 5
+    isActiveClosed := c_qqq
+else if activePairIndex == 6
+    isActiveClosed := c_ibit
+
 
 // -----------------------------------------------------------------------------
 // TABLE LOGIC
 // -----------------------------------------------------------------------------
 // Rows: Header + 6 Pairs = 7 Rows
-// Columns: Name, Ratio, Last Prices
-var table infoTable = table.new(f_getPos(tblPos), 3, 7, border_width=1, border_color=color.gray, frame_color=color.gray, frame_width=1)
+// Columns: Name, Ratio, Last Prices, Status
+var table infoTable = table.new(f_getPos(tblPos), 4, 7, border_width=1, border_color=color.gray, frame_color=color.gray, frame_width=1)
 
 if showTable and barstate.islast
-    table.clear(infoTable, 0, 0, 2, 6)
+    table.clear(infoTable, 0, 0, 3, 6)
     // Header
     table.cell(infoTable, 0, 0, "Pair",      bgcolor=tblBgCol, text_color=tblTxtCol, text_size=tblTxtSize)
     table.cell(infoTable, 1, 0, "Ratio",     bgcolor=tblBgCol, text_color=tblTxtCol, text_size=tblTxtSize)
     table.cell(infoTable, 2, 0, "Prices",    bgcolor=tblBgCol, text_color=tblTxtCol, text_size=tblTxtSize)
+    table.cell(infoTable, 3, 0, "Status",    bgcolor=tblBgCol, text_color=tblTxtCol, text_size=tblTxtSize)
 
     int r = 1
 
@@ -248,6 +265,7 @@ if showTable and barstate.islast
         table.cell(infoTable, 0, r, "SPY/US500", bgcolor=tblBgCol, text_color=tblTxtCol, text_size=tblTxtSize)
         table.cell(infoTable, 1, r, f_fmtRatio(r_spy_us500), bgcolor=tblBgCol, text_color=tblTxtCol, text_size=tblTxtSize)
         table.cell(infoTable, 2, r, f_fmtNum(d_spy) + " / " + f_fmtNum(p_us500), bgcolor=tblBgCol, text_color=tblTxtCol, text_size=tblTxtSize)
+        table.cell(infoTable, 3, r, c_spy ? "Closed" : "Open", bgcolor=c_spy ? tblBgColClosed : tblBgCol, text_color=tblTxtCol, text_size=tblTxtSize)
         r := r + 1
 
     // Row 2
@@ -255,6 +273,7 @@ if showTable and barstate.islast
         table.cell(infoTable, 0, r, "GLD/XAUUSD", bgcolor=tblBgCol, text_color=tblTxtCol, text_size=tblTxtSize)
         table.cell(infoTable, 1, r, f_fmtRatio(r_gld_xau), bgcolor=tblBgCol, text_color=tblTxtCol, text_size=tblTxtSize)
         table.cell(infoTable, 2, r, f_fmtNum(d_gld) + " / " + f_fmtNum(p_xau), bgcolor=tblBgCol, text_color=tblTxtCol, text_size=tblTxtSize)
+        table.cell(infoTable, 3, r, c_gld ? "Closed" : "Open", bgcolor=c_gld ? tblBgColClosed : tblBgCol, text_color=tblTxtCol, text_size=tblTxtSize)
         r := r + 1
 
     // Row 3
@@ -262,6 +281,7 @@ if showTable and barstate.islast
         table.cell(infoTable, 0, r, "SLV/XAGUSD", bgcolor=tblBgCol, text_color=tblTxtCol, text_size=tblTxtSize)
         table.cell(infoTable, 1, r, f_fmtRatio(r_slv_xag), bgcolor=tblBgCol, text_color=tblTxtCol, text_size=tblTxtSize)
         table.cell(infoTable, 2, r, f_fmtNum(d_slv) + " / " + f_fmtNum(p_xag), bgcolor=tblBgCol, text_color=tblTxtCol, text_size=tblTxtSize)
+        table.cell(infoTable, 3, r, c_slv ? "Closed" : "Open", bgcolor=c_slv ? tblBgColClosed : tblBgCol, text_color=tblTxtCol, text_size=tblTxtSize)
         r := r + 1
 
     // Row 4
@@ -269,6 +289,7 @@ if showTable and barstate.islast
         table.cell(infoTable, 0, r, "IWM/US2000", bgcolor=tblBgCol, text_color=tblTxtCol, text_size=tblTxtSize)
         table.cell(infoTable, 1, r, f_fmtRatio(r_iwm_us2000), bgcolor=tblBgCol, text_color=tblTxtCol, text_size=tblTxtSize)
         table.cell(infoTable, 2, r, f_fmtNum(d_iwm) + " / " + f_fmtNum(p_us2000), bgcolor=tblBgCol, text_color=tblTxtCol, text_size=tblTxtSize)
+        table.cell(infoTable, 3, r, c_iwm ? "Closed" : "Open", bgcolor=c_iwm ? tblBgColClosed : tblBgCol, text_color=tblTxtCol, text_size=tblTxtSize)
         r := r + 1
 
     // Row 5
@@ -276,6 +297,7 @@ if showTable and barstate.islast
         table.cell(infoTable, 0, r, "QQQ/NAS100", bgcolor=tblBgCol, text_color=tblTxtCol, text_size=tblTxtSize)
         table.cell(infoTable, 1, r, f_fmtRatio(r_qqq_nas100), bgcolor=tblBgCol, text_color=tblTxtCol, text_size=tblTxtSize)
         table.cell(infoTable, 2, r, f_fmtNum(d_qqq) + " / " + f_fmtNum(p_nas100), bgcolor=tblBgCol, text_color=tblTxtCol, text_size=tblTxtSize)
+        table.cell(infoTable, 3, r, c_qqq ? "Closed" : "Open", bgcolor=c_qqq ? tblBgColClosed : tblBgCol, text_color=tblTxtCol, text_size=tblTxtSize)
         r := r + 1
 
     // Row 6
@@ -283,6 +305,7 @@ if showTable and barstate.islast
         table.cell(infoTable, 0, r, "IBIT/BTCUSD", bgcolor=tblBgCol, text_color=tblTxtCol, text_size=tblTxtSize)
         table.cell(infoTable, 1, r, f_fmtRatio(r_ibit_btc), bgcolor=tblBgCol, text_color=tblTxtCol, text_size=tblTxtSize)
         table.cell(infoTable, 2, r, f_fmtNum(d_ibit) + " / " + f_fmtNum(p_btc), bgcolor=tblBgCol, text_color=tblTxtCol, text_size=tblTxtSize)
+        table.cell(infoTable, 3, r, c_ibit ? "Closed" : "Open", bgcolor=c_ibit ? tblBgColClosed : tblBgCol, text_color=tblTxtCol, text_size=tblTxtSize)
         r := r + 1
 
 
@@ -305,7 +328,7 @@ if barstate.islast and showLbl and not na(compPrice)
          x          = x_loc, 
          y          = close, 
          text       = activeCompName + ": " + f_fmtNum(compPrice), 
-         color      = lblBgCol, 
+         color      = isActiveClosed ? lblBgColClosed : lblBgCol, 
          textcolor  = lblTxtCol, 
          style      = lblSide == "Right" ? label.style_label_left : label.style_label_right,
          size       = size.normal
